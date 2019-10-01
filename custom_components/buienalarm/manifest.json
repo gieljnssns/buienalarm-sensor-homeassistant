@@ -1,0 +1,12 @@
+{
+    "domain": "buienalarm",
+    "name": "Buienalarm",
+    "documentation": "none",
+    "requirements": [
+        "pybuienalarm==0.0.4"
+    ],
+    "dependencies": [],
+    "codeowners": [
+        "@gieljnssns"
+    ]
+}
