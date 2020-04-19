@@ -3,6 +3,7 @@
 # from datetime import datetime, timedelta
 # import time
 import logging
+import json
 
 # import async_timeout
 import voluptuous as vol
@@ -29,7 +30,8 @@ SENSOR_TYPES = {
     'precipitation_forecast_average': ['Precipitation forecast average',
                                        'mm/h', 'mdi:weather-pouring'],
     'precipitation_forecast_total': ['Precipitation forecast total',
-                                     'mm', 'mdi:weather-pouring']
+                                     'mm', 'mdi:weather-pouring'],
+    'next_rain_forecast': ['Next rain forecast', 'minutes', 'mdi:weather-pouring']
 }
 
 CONF_TIMEFRAME = 'timeframe'
@@ -58,16 +60,15 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     latitude = config.get(CONF_LATITUDE, hass.config.latitude)
     longitude = config.get(CONF_LONGITUDE, hass.config.longitude)
     timeframe = config.get(CONF_TIMEFRAME, DEFAULT_TIMEFRAME)
-    
+
     if None in (latitude, longitude):
         _LOGGER.error("Latitude or longitude not set in HomeAssistant config")
         return False
 
-    b = Buienalarm(
-        longitude, latitude, timeframe)
-    
+    b = Buienalarm(lon=longitude, lat=latitude, timeframe=timeframe)
+
     dev = []
-    
+
     for sensor in config[CONF_MONITORED_CONDITIONS]:
         dev.append(BaSensor(b, sensor, timeframe, config.get(CONF_NAME)))
 
@@ -87,7 +88,7 @@ class BaSensor(Entity):
         self._unit_of_measurement = SENSOR_TYPES[self.type][1]
         self._icon = SENSOR_TYPES[self.type][2]
         self.update()
-    
+
     @property
     def name(self):
         """Return the name of the sensor."""
@@ -115,9 +116,20 @@ class BaSensor(Entity):
 
         elif self.type == 'precipitation':
             self._state = self.buienalarm.get_precipitation_now()
-            
+
         elif self.type == 'precipitation_forecast_total':
             self._state = self.buienalarm.get_precipitation_forecast_total()
-                        
+
         elif self.type == 'precipitation_forecast_average':
             self._state = self.buienalarm.get_precipitation_forecast_average()
+
+        elif self.type == 'next_rain_forecast':
+            p_forecast = json.loads(self.buienalarm.get_forecast())
+            next_rain_minutes = -1
+            periods = 0
+            for precip in p_forecast:
+                periods += 1
+                if precip > 0:
+                    next_rain_minutes = 5*periods
+                    break
+            self._state = next_rain_minutes
