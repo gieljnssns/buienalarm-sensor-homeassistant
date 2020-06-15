@@ -1,5 +1,5 @@
 {
-   "name": "Buienalarm",
-   "render_readme": true,
-   "domains": ["sensor"]
- }
+  "name": "Buienalarm",
+  "render_readme": true,
+  "domains": ["sensor"]
+}

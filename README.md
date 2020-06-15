@@ -1,7 +1,8 @@
 # buienalarm-sensor-homeassistant
+
 Buienalarm custom_component for Home-Assistant
 
-```
+```yaml
 sensor:
   - platform: buienalarm
     timeframe: 15
@@ -15,6 +16,7 @@ sensor:
 ```
 
 values for next_rain_forecast can be:
- - -1 No rain forecast withing timeframe
- - 0 It is currently raining
- - N Rain is forecast within N minutes
+
+- -1 No rain forecast withing timeframe
+- 0 It is currently raining
+- N Rain is forecast within N minutes
