@@ -138,7 +138,6 @@ class BaSensor(Entity):
 
         elif self.type == "next_rain_forecast":
             p_forecast = self.ba_data.forecast
-            print(p_forecast)
             next_rain_minutes = -1
             periods = -1
             for precip in p_forecast:
