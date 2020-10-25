@@ -15,6 +15,10 @@ sensor:
       - next_rain_forecast
 ```
 
+Your sensors default name will be sensor.ba_{monitored_condition}
+
+You can provide a timeframe: Minutes to look ahead for precipitation forecast (min: 5 / max: 120) - Default value: 60
+
 values for next_rain_forecast can be:
 
 - -1 No rain forecast withing timeframe
