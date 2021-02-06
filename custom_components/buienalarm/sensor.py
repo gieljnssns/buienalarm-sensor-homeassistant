@@ -145,7 +145,10 @@ class BaSensor(Entity):
                 if precip > 0:
                     next_rain_minutes = 5 * periods
                     break
-            self._state = next_rain_minutes
+            if next_rain_minutes == -1:
+                self._state = None
+            else:
+                self._state = next_rain_minutes
 
 
 class BuienalarmData:
