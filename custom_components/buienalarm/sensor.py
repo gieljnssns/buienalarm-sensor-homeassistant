@@ -26,6 +26,7 @@ MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=60)
 _LOGGER = logging.getLogger(__name__)
 
 
+ATTRIBUTION = "Data provided by Buienalarm B.V."
 DEFAULT_TIMEFRAME = 60
 
 
@@ -120,6 +121,13 @@ class BaSensor(Entity):
     def icon(self):
         """Return icon."""
         return self._icon
+
+    @property
+    def device_state_attributes(self):
+        """Return the state attributes."""
+        attr = {}
+        attr[ATTR_ATTRIBUTION] = ATTRIBUTION
+        return attr
 
     def update(self):
         """Update buienalarm."""
