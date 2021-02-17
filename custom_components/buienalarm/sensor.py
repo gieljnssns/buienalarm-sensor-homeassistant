@@ -121,6 +121,15 @@ class BaSensor(Entity):
         """Return icon."""
         return self._icon
 
+    @property
+    def device_state_attributes(self):
+        """Return the state attributes."""
+        attr = {}
+        if not self.type.find("forecast") == -1:
+            attr[CONF_TIMEFRAME] = self.ba_data.timeframe
+
+        return attr
+
     def update(self):
         """Update buienalarm."""
         self.ba_data.update()
