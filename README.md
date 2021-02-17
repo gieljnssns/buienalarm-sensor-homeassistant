@@ -21,6 +21,6 @@ You can provide a timeframe: Minutes to look ahead for precipitation forecast (m
 
 values for next_rain_forecast can be:
 
-- -1 No rain forecast withing timeframe
-- 0 It is currently raining
-- N Rain is forecast within N minutes
+- Unknown: No rain forecast within timeframe
+- 0: It is currently raining
+- N: Rain is forecasted within N minutes
