@@ -26,8 +26,8 @@ MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=60)
 _LOGGER = logging.getLogger(__name__)
 
 
+ATTRIBUTION = "Data provided by Buienalarm B.V."
 DEFAULT_TIMEFRAME = 60
-
 
 SENSOR_TYPES = {
     "temperature": ["Temperature", TEMP_CELSIUS, "mdi:thermometer"],
@@ -125,6 +125,7 @@ class BaSensor(Entity):
     def device_state_attributes(self):
         """Return the state attributes."""
         attr = {}
+        attr[ATTR_ATTRIBUTION] = ATTRIBUTION
         if not self.type.find("forecast") == -1:
             attr[CONF_TIMEFRAME] = self.ba_data.timeframe
 
