@@ -1,3 +1,7 @@
+### [v1.6](https://github.com/gieljnssns/buienalarm-sensor-homeassistant/compare/v1.5...v1.6) (2021-07-06)
+
+### [v1.5](https://github.com/gieljnssns/buienalarm-sensor-homeassistant/compare/v1.4...v1.5) (2021-03-03)
+
 ### [v1.4](https://github.com/gieljnssns/buienalarm-sensor-homeassistant/compare/v1.3...v1.4) (2021-02-23)
 
 

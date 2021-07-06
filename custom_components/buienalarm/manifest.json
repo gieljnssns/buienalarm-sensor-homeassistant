@@ -1,9 +1,9 @@
 {
   "domain": "buienalarm",
   "name": "Buienalarm",
-  "version": "1.5",
+  "version": "1.6",
   "documentation": "https://github.com/gieljnssns/buienalarm-sensor-homeassistant/tree/master",
-  "requirements": ["pybuienalarm==0.0.7"],
+  "requirements": ["pybuienalarm==0.0.8"],
   "dependencies": [],
   "codeowners": ["@gieljnssns"]
 }
