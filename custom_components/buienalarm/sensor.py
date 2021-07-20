@@ -1,55 +1,49 @@
 """Support for Buienalarm weather service."""
+
 from datetime import timedelta
-
-import logging
-import json
-
-from buienalarm.pybuienalarm import Buienalarm
-
-import voluptuous as vol
+from typing import Any, Mapping, Optional, Union
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import (
     ATTR_ATTRIBUTION,
     CONF_LATITUDE,
     CONF_LONGITUDE,
     CONF_MONITORED_CONDITIONS,
     CONF_NAME,
-    TEMP_CELSIUS,
 )
-import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.entity import Entity
-from homeassistant.util import Throttle
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
+from homeassistant.util import dt as dt_util
+from homeassistant.helpers import config_validation as cv
+import voluptuous as vol
 
-MIN_TIME_BETWEEN_UPDATES = timedelta(seconds=60)
+from buienalarm.pybuienalarm import Buienalarm
+from .const import (
+    ATTRIBUTION,
+    CONF_TIMEFRAME,
+    DEFAULT_NAME,
+    DEFAULT_TIMEFRAME,
+    ITEM_PRECIP_NOW,
+    ITEM_TEMP,
+    ITEM_PRECIP_FORECAST_TOTAL,
+    ITEM_PRECIP_FORECAST_AVG,
+    ITEM_NEXT_RAIN_FORECAST,
+    LOGGER as _LOGGER,
+    SENSOR_TYPES,
+    SensorType,
+    UPDATE_INTERVAL,
+)
 
-_LOGGER = logging.getLogger(__name__)
-
-
-ATTRIBUTION = "Data provided by Buienalarm B.V."
-DEFAULT_TIMEFRAME = 60
-
-SENSOR_TYPES = {
-    "temperature": ["Temperature", TEMP_CELSIUS, "mdi:thermometer"],
-    "precipitation": ["Precipitation", "mm/h", "mdi:weather-pouring"],
-    "precipitation_forecast_average": [
-        "Precipitation forecast average",
-        "mm/h",
-        "mdi:weather-pouring",
-    ],
-    "precipitation_forecast_total": [
-        "Precipitation forecast total",
-        "mm",
-        "mdi:weather-pouring",
-    ],
-    "next_rain_forecast": ["Next rain forecast", "minutes", "mdi:weather-pouring"],
-}
-
-CONF_TIMEFRAME = "timeframe"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
-        vol.Optional(CONF_MONITORED_CONDITIONS, default=["precipitation"]): vol.All(
+        vol.Optional(CONF_MONITORED_CONDITIONS, default=[ITEM_PRECIP_NOW]): vol.All(
             cv.ensure_list, vol.Length(min=1), [vol.In(SENSOR_TYPES.keys())]
         ),
         vol.Inclusive(
@@ -58,139 +52,159 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Inclusive(
             CONF_LONGITUDE, "coordinates", "Latitude and longitude must exist together"
         ): cv.longitude,
-        vol.Optional(CONF_TIMEFRAME, default=60): vol.All(
+        vol.Optional(CONF_TIMEFRAME, default=DEFAULT_TIMEFRAME): vol.All(
             vol.Coerce(int), vol.Range(min=5, max=120)
         ),
-        vol.Optional(CONF_NAME, default="ba"): cv.string,
+        vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
     }
 )
 
+BUIENALARM_TZ = dt_util.get_time_zone("Europe/Amsterdam")
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+
+async def async_setup_platform(
+    hass: HomeAssistant,
+    config: ConfigType,
+    async_add_entities: AddEntitiesCallback,
+    discovery_info: Optional[DiscoveryInfoType] = None,
+) -> None:
     """Set up Buienalarm."""
 
     latitude = config.get(CONF_LATITUDE, hass.config.latitude)
     longitude = config.get(CONF_LONGITUDE, hass.config.longitude)
-    timeframe = config.get(CONF_TIMEFRAME, DEFAULT_TIMEFRAME)
+    timeframe = timedelta(minutes=config[CONF_TIMEFRAME])
 
     if None in (latitude, longitude):
         _LOGGER.error("Latitude or longitude not set in HomeAssistant config")
-        return False
+        return
 
-    dev = []
+    api = Buienalarm(longitude, latitude)
 
-    data = BuienalarmData(longitude, latitude, timeframe)
+    client_name = config.get(CONF_NAME)
+    async def async_api_update():
+        """."""
+        await hass.async_add_executor_job(api.update)
+    coordinator = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        name=client_name,
+        update_method=async_api_update,
+        update_interval=UPDATE_INTERVAL,
+    )
+    entities = [
+        BuienalarmSensor(coordinator, api, sensor, client_name, timeframe=timeframe)
+        for sensor in config[CONF_MONITORED_CONDITIONS]
+    ]
+    async_add_entities(entities, True)
 
-    for sensor in config[CONF_MONITORED_CONDITIONS]:
-        dev.append(BaSensor(data, sensor, config.get(CONF_NAME)))
 
-    add_entities(dev)
-
-
-class BaSensor(Entity):
+class BuienalarmSensor(CoordinatorEntity, SensorEntity):
     """Representation of Buienalarm."""
 
-    def __init__(self, data, sensor_type, client_name):
+    def __init__(
+        self,
+        coordinator: DataUpdateCoordinator,
+        api: Buienalarm,
+        sensor_type_name: str,
+        client_name: str,
+        timeframe: timedelta = timedelta(minutes=60)
+    ) -> None:
         """Initialize the sensor."""
-        self.client_name = client_name
-        self._name = SENSOR_TYPES[sensor_type][0]
-        self.type = sensor_type
-        self.ba_data = data
-        self._state = None
-        self._unit_of_measurement = SENSOR_TYPES[self.type][1]
-        self._icon = SENSOR_TYPES[self.type][2]
-        self.update()
+        super().__init__(coordinator)
+        self._api = api
+        self._sensor_type_name = sensor_type_name
+        self._client_name = client_name
+        self._timeframe = timeframe
 
     @property
-    def name(self):
-        """Return the name of the sensor."""
-        return "{} {}".format(self.client_name, self._name)
+    def name(self) -> str:
+        """Return name."""
+        return f"{self._client_name} {self._sensor_type.name}"
 
     @property
-    def state(self):
-        """Return the state of the device."""
-        return self._state
+    def unit_of_measurement(self) -> str:
+        """Return unit of measurement."""
+        return self._sensor_type.unit
 
     @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement this sensor expresses itself in."""
-        return self._unit_of_measurement
-
-    @property
-    def icon(self):
+    def icon(self) -> str:
         """Return icon."""
-        return self._icon
+        return self._sensor_type.icon
 
     @property
-    def device_state_attributes(self):
-        """Return the state attributes."""
-        attr = {}
-        attr[ATTR_ATTRIBUTION] = ATTRIBUTION
-        if not self.type.find("forecast") == -1:
-            attr[CONF_TIMEFRAME] = self.ba_data.timeframe
+    def device_state_attributes(self) -> Mapping[str, Any]:
+        """Return state attributes."""
+        attr = {
+            ATTR_ATTRIBUTION: ATTRIBUTION,
+        }
+
+        if "forecast" in self._sensor_type_name and \
+            self._api.has_data:
+            attr[CONF_TIMEFRAME] = self._timeframe / self._api.delta
 
         return attr
 
-    def update(self):
-        """Update buienalarm."""
-        self.ba_data.update()
-        if self.type == "temperature":
-            self._state = self.ba_data.temperature
+    @property
+    def state(self) -> Optional[Union[str, float]]:
+        """Get state."""
+        _LOGGER.debug("Get state: %s", self._sensor_type_name)
+        if not self._api.has_data:
+            return None
 
-        elif self.type == "precipitation":
-            self._state = self.ba_data.precipitation_now
+        if self._sensor_type_name == ITEM_TEMP:
+            return self._api.temperature
+        elif self._sensor_type_name == ITEM_PRECIP_NOW:
+            return self._precipitation_now
+        elif self._sensor_type_name == ITEM_PRECIP_FORECAST_TOTAL:
+            return self._precipitation_forecast_total
+        elif self._sensor_type_name == ITEM_PRECIP_FORECAST_AVG:
+            return self._precipitation_forecast_average
+        elif self._sensor_type_name == ITEM_NEXT_RAIN_FORECAST:
+            return self._next_rain_forecast
+        else:
+            raise NotImplementedError("Unknown sensor type")
 
-        elif self.type == "precipitation_forecast_total":
-            self._state = self.ba_data.precipitation_forecast_total
+    @property
+    def _precipitation_forecast_average(self) -> float:
+        """Get average precipitation forecast."""
+        return sum(self._precipitation_values) / self._timeframe_value_count
 
-        elif self.type == "precipitation_forecast_average":
-            self._state = self.ba_data.precipitation_forecast_average
+    @property
+    def _precipitation_forecast_total(self) -> float:
+        """Get total precipitation forecast."""
+        return sum(self._precipitation_values)
 
-        elif self.type == "next_rain_forecast":
-            p_forecast = self.ba_data.forecast
-            next_rain_minutes = -1
-            periods = -1
-            for precip in p_forecast:
-                periods += 1
-                if precip > 0:
-                    next_rain_minutes = 5 * periods
-                    break
-            if next_rain_minutes == -1:
-                self._state = None
-            else:
-                self._state = next_rain_minutes
+    @property
+    def _precipitation_now(self) -> float:
+        """Get current precipitation."""
+        return self._precipitation_values[0]
 
+    @property
+    def _next_rain_forecast(self) -> Optional[str]:
+        """Get next rain forecast."""
+        for precip_at in self._precipitation:
+            if precip_at.value > 0.0:
+                return str(precip_at.timestamp)
 
-class BuienalarmData:
-    """The data from buienalarm."""
+        return None
 
-    def __init__(self, longitude, latitude, timeframe):
-        """Initialize the data object."""
-        self.longitude = longitude
-        self.latitude = latitude
-        self.timeframe = timeframe
-        self.buienalarm = None
-        self.temperature = None
-        self.precipitation_now = None
-        self.precipitation_forecast_total = None
-        self.precipitation_forecast_average = None
-        self.forecast = None
-        self.update()
+    @property
+    def _precipitation(self):
+        """Get precipitation within timeframe, starting from now."""
+        count = self._timeframe_value_count
+        return self._api.precipitation_from_now[0:count]  # Slice up to our timeframe.
 
-    @Throttle(MIN_TIME_BETWEEN_UPDATES)
-    def update(self):
-        """Update inverter data."""
-        self.buienalarm = Buienalarm(
-            lon=self.longitude, lat=self.latitude, timeframe=self.timeframe
-        )
-        self.temperature = self.buienalarm.get_temperature()
-        self.precipitation_now = self.buienalarm.get_precipitation_now()
-        self.precipitation_forecast_total = (
-            self.buienalarm.get_precipitation_forecast_total()
-        )
-        self.precipitation_forecast_average = (
-            self.buienalarm.get_precipitation_forecast_average()
-        )
-        self.forecast = json.loads(self.buienalarm.get_forecast())
+    @property
+    def _precipitation_values(self):
+        """Get precipitation values within timeframe, starting from now."""
+        return [precip.value for precip in self._precipitation]
 
-        _LOGGER.debug(self.buienalarm)
+    @property
+    def _timeframe_value_count(self):
+        """Get number of precipitation slots within our timeframe."""
+        return int(self._timeframe / self._api.delta)
+
+    @property
+    def _sensor_type(self) -> SensorType:
+        """Get SensorType for self."""
+        return SENSOR_TYPES[self._sensor_type_name]
