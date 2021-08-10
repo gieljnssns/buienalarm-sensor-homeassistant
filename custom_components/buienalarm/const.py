@@ -1,14 +1,10 @@
 """Support for Buienalarm weather service."""
 
+import logging
 from datetime import timedelta
 from typing import NamedTuple
-import logging
 
-from homeassistant.const import (
-    TEMP_CELSIUS,
-    LENGTH_MILLIMETERS,
-    TIME_MINUTES,
-)
+from homeassistant.const import LENGTH_MILLIMETERS, TEMP_CELSIUS
 
 SensorType = NamedTuple(
     "SensorType",
@@ -16,7 +12,8 @@ SensorType = NamedTuple(
         ("name", str),
         ("unit", str),
         ("icon", str),
-    ])
+    ],
+)
 
 
 LOGGER = logging.getLogger(__package__)
@@ -24,6 +21,8 @@ UPDATE_INTERVAL = timedelta(seconds=300)
 ATTRIBUTION = "Data provided by Buienalarm B.V."
 DEFAULT_TIMEFRAME = 60
 DEFAULT_NAME = "ba"
+ICON_THERMOMETER = "mdi:thermometer"
+ICON_WEATHER_POURING = "mdi:weather-pouring"
 ITEM_TEMP = "temperature"
 ITEM_PRECIP_NOW = "precipitation"
 ITEM_PRECIP_FORECAST_AVG = "precipitation_forecast_average"
@@ -33,23 +32,27 @@ SENSOR_TYPES = {
     ITEM_TEMP: SensorType(
         "Temperature",
         TEMP_CELSIUS,
-        "mdi:thermometer"),
+        ICON_THERMOMETER),
     ITEM_PRECIP_NOW: SensorType(
         "Precipitation",
         LENGTH_MILLIMETERS + "/h",
-        "mdi:weather-pouring"),
+        ICON_WEATHER_POURING
+    ),
     ITEM_PRECIP_FORECAST_AVG: SensorType(
         "Precipitation forecast average",
         LENGTH_MILLIMETERS + "/h",
-        "mdi:weather-pouring"),
+        ICON_WEATHER_POURING,
+    ),
     ITEM_PRECIP_FORECAST_TOTAL: SensorType(
         "Precipitation forecast total",
         LENGTH_MILLIMETERS,
-        "mdi:weather-pouring"),
+        ICON_WEATHER_POURING
+    ),
     ITEM_NEXT_RAIN_FORECAST: SensorType(
         "Next rain forecast",
-        TIME_MINUTES,
-        "mdi:weather-pouring"),
+        None,
+        ICON_WEATHER_POURING
+    ),
 }
 CONF_TIMEFRAME = "timeframe"
 CONF_CONDITION_PRECIPITATION = "precipitation"
