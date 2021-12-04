@@ -134,7 +134,7 @@ class BuienalarmSensor(CoordinatorEntity, SensorEntity):
         return self._sensor_type.icon
 
     @property
-    def device_state_attributes(self) -> Mapping[str, Any]:
+    def extra_state_attributes(self) -> Mapping[str, Any]:
         """Return state attributes."""
         attr = {
             ATTR_ATTRIBUTION: ATTRIBUTION,
