@@ -4,7 +4,7 @@ import logging
 from datetime import timedelta
 from typing import NamedTuple
 
-from homeassistant.const import LENGTH_MILLIMETERS, TEMP_CELSIUS
+from homeassistant.const import UnitOfLength, UnitOfTemperature
 
 SensorType = NamedTuple(
     "SensorType",
@@ -31,21 +31,21 @@ ITEM_NEXT_RAIN_FORECAST = "next_rain_forecast"
 SENSOR_TYPES = {
     ITEM_TEMP: SensorType(
         "Temperature",
-        TEMP_CELSIUS,
+        UnitOfTemperature.CELSIUS,
         ICON_THERMOMETER),
     ITEM_PRECIP_NOW: SensorType(
         "Precipitation",
-        LENGTH_MILLIMETERS + "/h",
+        UnitOfLength.MILLIMETERS + "/h",
         ICON_WEATHER_POURING
     ),
     ITEM_PRECIP_FORECAST_AVG: SensorType(
         "Precipitation forecast average",
-        LENGTH_MILLIMETERS + "/h",
+        UnitOfLength.MILLIMETERS + "/h",
         ICON_WEATHER_POURING,
     ),
     ITEM_PRECIP_FORECAST_TOTAL: SensorType(
         "Precipitation forecast total",
-        LENGTH_MILLIMETERS,
+        UnitOfLength.MILLIMETERS,
         ICON_WEATHER_POURING
     ),
     ITEM_NEXT_RAIN_FORECAST: SensorType(
@@ -56,3 +56,4 @@ SENSOR_TYPES = {
 }
 CONF_TIMEFRAME = "timeframe"
 CONF_CONDITION_PRECIPITATION = "precipitation"
+
